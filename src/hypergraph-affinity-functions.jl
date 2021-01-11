@@ -295,14 +295,31 @@ function GHI(H,classes,r)
     for k = 1:r
         last1 = k
         last2 = k
+        c1searching = true
+        c2searching = true
+
+        if R1[k,k] < 1
+            c1searching = false
+            last1 = k+1
+        end
+
+        if R2[k,k] < 1
+            c2searching = false
+            last2 = k+1
+        end
+
         for j = k:-1:1
-            @assert(R1[k,k] >= 1)
-            @assert(R2[k,k] >= 1)
-            if R1[k,j] > 1
+            # @assert(R1[k,k] >= 1)
+            # @assert(R2[k,k] >= 1)
+            if R1[k,j] > 1 && c1searching
                 last1 = j
+            else
+                c1searching = false
             end
-            if R2[k,j] > 1
+            if R2[k,j] > 1 && c2searching
                 last2 = j
+            else
+                c2searching = false
             end
             if R1[k,j] < 1 && R2[k,j] < 1
                 break
@@ -317,4 +334,110 @@ function GHI(H,classes,r)
     S2 = collect(1:r) - Sets2 .+ 1
 
     return S1, S2
+end
+
+function Bootstrap_Affinities(H,k,B,classes)
+    n = size(H,2)
+    R1 = zeros(B,k)
+    R0 = zeros(B,k)
+
+    A1 = zeros(B,k)
+    A0 = zeros(B,k)
+
+    order = vec(sum(H,dims = 2))
+    Ek = findall(x->x==k,order)
+
+    alpha = sum(classes)/n
+    B1 = arbitrary_baselines(k,alpha)
+    B0 = arbitrary_baselines(k,1-alpha)
+    for i = 1:B
+        sam = sample(Ek,length(Ek))
+        Hnew = H[sam,:]
+        Elist = incidence2elist(Hnew)
+        Nk = zeros(k+1)
+        for edge in Elist
+            elabels = classes[edge]
+            t = sum(elabels)
+            Nk[t+1] += 1
+        end
+        c1_denom = sum(i*Nk[i+1] for i = 1:k)
+        c0_denom = sum(i*Nk[k-i+1] for i = 1:k)
+        for t = 1:k
+            A1[i,t] = (t*Nk[t+1]/c1_denom)
+            A0[i,t] = (t*Nk[k-t+1]/c0_denom)
+            R1[i,t] = (t*Nk[t+1]/c1_denom)/B1[t]
+            R0[i,t] = (t*Nk[k-t+1]/c0_denom)/B0[t]
+        end
+    end
+
+    # Average of the random trials
+    MR1 = vec(mean(R1,dims = 1))
+    MR0 = vec(mean(R0,dims = 1))
+    MA1 = vec(mean(A1,dims = 1))
+    MA0 = vec(mean(A0,dims = 1))
+
+    # Compute standard error
+    SR1 = zeros(k)
+    SR0 = zeros(k)
+    SA1 = zeros(k)
+    SA0 = zeros(k)
+    for t = 1:k
+        SR1[t] = StatsBase.std(R1[:,t])
+        SR0[t] = StatsBase.std(R0[:,t])
+        SA1[t] = StatsBase.std(A1[:,t])
+        SA0[t] = StatsBase.std(A0[:,t])
+    end
+
+    return R0, R1, MR1, MR0, SR1, SR0, A0, A1, MA1, MA0, SA1, SA0
+
+end
+
+
+function Bootstrap_From_N(Nk_old,B,alpha)
+
+    k = length(Nk_old)-1
+
+    R1 = zeros(B,k)
+    R0 = zeros(B,k)
+    A1 = zeros(B,k)
+    A0 = zeros(B,k)
+    B1 = arbitrary_baselines(k,alpha)
+    B0 = arbitrary_baselines(k,1-alpha)
+
+    for i = 1:B
+        Nk = zeros(k+1)
+        # @show Nk_old
+        for j = 1:round(Int64,sum(Nk_old))
+            Nk[sample(1:k+1,Nk_old)] += 1
+        end
+        c1_denom = sum(i*Nk[i+1] for i = 1:k)
+        c0_denom = sum(i*Nk[k-i+1] for i = 1:k)
+        for t = 1:k
+            A1[i,t] = (t*Nk[t+1]/c1_denom)
+            A0[i,t] = (t*Nk[k-t+1]/c0_denom)
+            R1[i,t] = (t*Nk[t+1]/c1_denom)/B1[t]
+            R0[i,t] = (t*Nk[k-t+1]/c0_denom)/B0[t]
+        end
+    end
+
+    # Average of the random trials
+    MR1 = vec(mean(R1,dims = 1))
+    MR0 = vec(mean(R0,dims = 1))
+    MA1 = vec(mean(A1,dims = 1))
+    MA0 = vec(mean(A0,dims = 1))
+
+    # Compute standard error
+    SR1 = zeros(k)
+    SR0 = zeros(k)
+    SA1 = zeros(k)
+    SA0 = zeros(k)
+    for t = 1:k
+        SR1[t] = StatsBase.std(R1[:,t])
+        SR0[t] = StatsBase.std(R0[:,t])
+        SA1[t] = StatsBase.std(A1[:,t])
+        SA0[t] = StatsBase.std(A0[:,t])
+    end
+
+    return R0, R1, MR1, MR0, SR1, SR0, A0, A1, MA1, MA0, SA1, SA0
+
 end
