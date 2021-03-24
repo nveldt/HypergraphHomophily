@@ -20,8 +20,8 @@ alpha, B1, B2, H1, H2, tR1, tR2, N = Hypergraph_to_Scores(H,classes,15)
 
 for k =  5:5:15
 B = 100
-T1 = tR1[k,1:k]  # True affinity scores
-T0 = tR2[k,1:k]
+TR1 = tR1[k,1:k]  # True affinity scores
+TR0 = tR2[k,1:k]
 
 TA1 = H1[k,1:k]  # True affinity scores
 TA0 = H2[k,1:k]
@@ -60,9 +60,9 @@ yaxis!(p,ylab,tickfontsize=tfs,guidefontsize = gfs)
 # [M0-2*SE0 M0+2*SE]
 # [E0m E0]
 # [E1m E1]
-p = plot!(1:k,[MR0 MR0], fillrange=[MR0-sc*SR0 MR0+sc*SR0], fillalpha=0.3, color = color2, linewidth = lw, markersize = ms,
+p = plot!(1:k,[TR0 TR0], fillrange=[MR0-sc*SR0 MR0+sc*SR0], fillalpha=0.3, color = color2, linewidth = lw, markersize = ms,
     markershape = :circle, markerstrokecolor = color2, label = class2)
-p = plot!(1:k,[MR1 MR1], fillrange=[MR1-sc*SR1 MR1+sc*SR1],fillalpha=0.3,color = color1, linewidth = lw, markersize = ms,
+p = plot!(1:k,[TR1 TR1], fillrange=[MR1-sc*SR1 MR1+sc*SR1],fillalpha=0.3,color = color1, linewidth = lw, markersize = ms,
     markershape = :circle,markerstrokecolor = color1, label = class1)
 savefig("Figures/Ratios_$(k)_Congress_Bootstrap.pdf")
 
@@ -91,9 +91,9 @@ yaxis!(p,ylab,tickfontsize=tfs,guidefontsize = gfs)
 # [M0-2*SE0 M0+2*SE]
 # [E0m E0]
 # [E1m E1]
-p = plot!(1:k,[MA0 MA0], fillrange=[MA0-sc*SA0 MA0+sc*SA0], fillalpha=0.3, color = color2, linewidth = lw, markersize = ms,
+p = plot!(1:k,[TA0 TA0], fillrange=[MA0-sc*SA0 MA0+sc*SA0], fillalpha=0.3, color = color2, linewidth = lw, markersize = ms,
     markershape = :circle, markerstrokecolor = color2, label = class2)
-p = plot!(1:k,[MA1 MA1], fillrange=[MA1-sc*SA1 MA1+sc*SA1],fillalpha=0.3,color = color1, linewidth = lw, markersize = ms,
+p = plot!(1:k,[TA1 TA1], fillrange=[MA1-sc*SA1 MA1+sc*SA1],fillalpha=0.3,color = color1, linewidth = lw, markersize = ms,
     markershape = :circle,markerstrokecolor = color1, label = class1)
 savefig("Figures/Affinities_$(k)_Congress_Bootstrap.pdf")
 end

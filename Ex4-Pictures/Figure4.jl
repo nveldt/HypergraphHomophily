@@ -7,6 +7,8 @@ Ng = M["Ng"]
 Nf = M["Nf"]
 Nw = M["Nw"]
 r = 10
+
+## Run all
 for j = 1:3
 for k = 2:4
 if  j == 1
@@ -82,7 +84,7 @@ N = Nw
 In1 = 0
 In2 = 0
 Cross = 0
-r = 4
+r = 10
 for k = 2:r
     global In1, In2, Cross
     for j = 1:k+1

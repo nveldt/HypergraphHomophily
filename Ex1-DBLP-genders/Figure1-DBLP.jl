@@ -4,14 +4,15 @@ include("../src/hypergraph-affinity-functions.jl")
 D = matread("DBLP-Author-Gender_H.mat")
 H = D["H"]
 classes = D["class"]
-
-r = 4
+order = vec(sum(H,dims = 2))
+r = 21
 alpha, B1, B2, H1, H2, R1, R2, N = Hypergraph_to_Scores(H,classes,r)
 class1 = "female"
 class2 = "male"
 
 # homophily indices for clique expanded hypergraph
-hw, hm = clique_expansion_homophily(N,r)
+
+hw, hm = clique_expansion_homophily(N,10)
 
 ## Some plots
 using Plots

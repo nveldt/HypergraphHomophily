@@ -1,8 +1,6 @@
 ## Put the file in a nicer form
 
-using JSON
-
-L = readlines("all_author_data.txt")
+L = readlines("../original-data/author-dblp/all_author_data.txt")
 
 Author2ID = Dict()
 Author2papers = Vector{Vector{Int64}}()
@@ -59,6 +57,7 @@ end
 
 
 ## Turn into hypergraph
+using SparseArrays
 n = nextID-1
 I = Vector{Int64}()
 J = Vector{Int64}()
