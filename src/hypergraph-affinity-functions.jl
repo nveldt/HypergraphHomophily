@@ -110,7 +110,7 @@ function order_degree(H::SparseMatrixCSC{Float64,Int64})
     """Returns hyperedge sizes and degrees for a hypergraph."""
     order = vec(sum(H,dims=2))
     deg = vec(sum(H,dims=1))
-    return order, degree
+    return order, deg
 end
 
 function get_hyperedge_counts(H::SparseMatrixCSC{Float64,Int64},classes::Vector{Int64})
@@ -284,10 +284,10 @@ function Hypergraph_to_Scores(H,classes,r)
     return alpha, B1, B2, H1, H2, R1, R2, N
 end
 
-function GHI(H,classes,r)
+function MaHI(H,classes,r)
     """
-    Group homophily index: largest value of j such that the top j affinity
-    scores are above baseline.
+    Majority homophily index: largest value of j such that the top j affinity
+    scores are above baseline. 
     """
     alpha, B1, B2, H1, H2, R1, R2, N = Hypergraph_to_Scores(H,classes,r)
     Sets1 = zeros(r)
@@ -322,6 +322,58 @@ function GHI(H,classes,r)
                 c2searching = false
             end
             if R1[k,j] < 1 && R2[k,j] < 1
+                break
+            end
+        end
+        Sets1[k] = last1
+        Sets2[k] = last2
+    end
+
+    ## Set-in plot
+    S1 = collect(1:r) - Sets1 .+ 1
+    S2 = collect(1:r) - Sets2 .+ 1
+
+    return S1, S2
+end
+
+
+function MoHI(H,classes,r)
+    """
+    Monotonic homophily index.
+    """
+    alpha, B1, B2, H1, H2, R1, R2, N = Hypergraph_to_Scores(H,classes,r)
+    Sets1 = zeros(r)
+    Sets2 = zeros(r)
+    for k = 2:r
+        last1 = k
+        last2 = k
+        c1searching = true
+        c2searching = true
+
+        if R1[k,k] < R1[k,k-1]
+            c1searching = false
+            last1 = k+1
+        end
+
+        if R2[k,k] < R2[k,k-1]
+            c2searching = false
+            last2 = k+1
+        end
+
+        for j = k:-1:2
+            # @assert(R1[k,k] >= 1)
+            # @assert(R2[k,k] >= 1)
+            if R1[k,j] > R1[k,j-1] && c1searching
+                last1 = j
+            else
+                c1searching = false
+            end
+            if R2[k,j] > R2[k,j-1] && c2searching
+                last2 = j
+            else
+                c2searching = false
+            end
+            if R1[k,j] < R1[k,j-1] && R2[k,j] < R2[k,j-1]
                 break
             end
         end
@@ -392,6 +444,157 @@ function Bootstrap_Affinities(H,k,B,classes)
 
 end
 
+function Bootstrap_Affinities_NormBias(H,k,B,classes)
+    n = size(H,2)
+    R1 = zeros(B,k)
+    R0 = zeros(B,k)
+
+    A1 = zeros(B,k)
+    A0 = zeros(B,k)
+
+    G1 = zeros(B,k)
+    G0 = zeros(B,k)
+
+    order = vec(sum(H,dims = 2))
+    Ek = findall(x->x==k,order)
+
+    alpha = sum(classes)/n
+    B1 = arbitrary_baselines(k,alpha)
+    B0 = arbitrary_baselines(k,1-alpha)
+    for i = 1:B
+        sam = sample(Ek,length(Ek))
+        Hnew = H[sam,:]
+        Elist = incidence2elist(Hnew)
+        Nk = zeros(k+1)
+        for edge in Elist
+            elabels = classes[edge]
+            t = sum(elabels)
+            Nk[t+1] += 1
+        end
+        c1_denom = sum(i*Nk[i+1] for i = 1:k)
+        c0_denom = sum(i*Nk[k-i+1] for i = 1:k)
+        for t = 1:k
+            h1 = (t*Nk[t+1]/c1_denom)
+            h0 = (t*Nk[k-t+1]/c0_denom)
+            A1[i,t] = h1
+            A0[i,t] = h0
+            R1[i,t] = h1/B1[t]
+            R0[i,t] = h0/B0[t]
+            
+            if h1 > B1[t]
+                G1[i,t] = (h1 - B1[t])/(1 - B1[t])
+            else
+                G1[i,t] = (h1 - B1[t])/(B1[t])
+            end
+
+            if h0 > B0[t]
+                G0[i,t] = (h0 - B0[t])/(1 - B0[t])
+            else
+                G0[i,t] = (h0 - B0[t])/(B0[t])
+            end
+        end
+    end
+
+    # Average of the random trials
+    MR1 = vec(mean(R1,dims = 1))
+    MR0 = vec(mean(R0,dims = 1))
+    MA1 = vec(mean(A1,dims = 1))
+    MA0 = vec(mean(A0,dims = 1))
+
+    MG1 = vec(mean(G1,dims = 1))
+    MG0 = vec(mean(G0,dims = 1))
+
+    # Compute standard error
+    SR1 = zeros(k)
+    SR0 = zeros(k)
+    SA1 = zeros(k)
+    SA0 = zeros(k)
+    SG1 = zeros(k)
+    SG0 = zeros(k)
+    for t = 1:k
+        SR1[t] = StatsBase.std(R1[:,t])
+        SR0[t] = StatsBase.std(R0[:,t])
+        SA1[t] = StatsBase.std(A1[:,t])
+        SA0[t] = StatsBase.std(A0[:,t])
+        SG1[t] = StatsBase.std(G1[:,t])
+        SG0[t] = StatsBase.std(G0[:,t])
+    end
+
+    return R0, R1, MR1, MR0, SR1, SR0, A0, A1, MA1, MA0, SA1, SA0, G0, G1, MG1, MG0, SG1, SG0
+
+end
+
+function Bootstrap_From_N_normbias(Nk_old,B,alpha)
+
+    k = length(Nk_old)-1
+
+    R1 = zeros(B,k)
+    R0 = zeros(B,k)
+    A1 = zeros(B,k)
+    A0 = zeros(B,k)
+    G1 = zeros(B,k)
+    G0 = zeros(B,k)
+    B1 = arbitrary_baselines(k,alpha)
+    B0 = arbitrary_baselines(k,1-alpha)
+
+    for i = 1:B
+        Nk = zeros(k+1)
+        # @show Nk_old
+        for j = 1:round(Int64,sum(Nk_old))
+            Nk[sample(1:k+1,Nk_old)] += 1
+        end
+        c1_denom = sum(i*Nk[i+1] for i = 1:k)
+        c0_denom = sum(i*Nk[k-i+1] for i = 1:k)
+        for t = 1:k
+            h1 = (t*Nk[t+1]/c1_denom)
+            h0 = (t*Nk[k-t+1]/c0_denom)
+            A1[i,t] = h1
+            A0[i,t] = h0
+            R1[i,t] = h1/B1[t]
+            R0[i,t] = h0/B0[t]
+            
+            if h1 > B1[t]
+                G1[i,t] = (h1 - B1[t])/(1 - B1[t])
+            else
+                G1[i,t] = (h1 - B1[t])/(B1[t])
+            end
+
+            if h0 > B0[t]
+                G0[i,t] = (h0 - B0[t])/(1 - B0[t])
+            else
+                G0[i,t] = (h0 - B0[t])/(B0[t])
+            end
+        end
+    end
+
+    # Average of the random trials
+    MR1 = vec(mean(R1,dims = 1))
+    MR0 = vec(mean(R0,dims = 1))
+    MA1 = vec(mean(A1,dims = 1))
+    MA0 = vec(mean(A0,dims = 1))
+
+    MG1 = vec(mean(G1,dims = 1))
+    MG0 = vec(mean(G0,dims = 1))
+
+    # Compute standard error
+    SR1 = zeros(k)
+    SR0 = zeros(k)
+    SA1 = zeros(k)
+    SA0 = zeros(k)
+    SG1 = zeros(k)
+    SG0 = zeros(k)
+    for t = 1:k
+        SR1[t] = StatsBase.std(R1[:,t])
+        SR0[t] = StatsBase.std(R0[:,t])
+        SA1[t] = StatsBase.std(A1[:,t])
+        SA0[t] = StatsBase.std(A0[:,t])
+        SG1[t] = StatsBase.std(G1[:,t])
+        SG0[t] = StatsBase.std(G0[:,t])
+    end
+
+    return R0, R1, MR1, MR0, SR1, SR0, A0, A1, MA1, MA0, SA1, SA0, G0, G1, MG1, MG0, SG1, SG0
+
+end
 
 function Bootstrap_From_N(Nk_old,B,alpha)
 
@@ -440,4 +643,29 @@ function Bootstrap_From_N(Nk_old,B,alpha)
 
     return R0, R1, MR1, MR0, SR1, SR0, A0, A1, MA1, MA0, SA1, SA0
 
+end
+
+
+function normalized_bias(H1, H2, B1, B2)
+
+    I1 = (H1 - B1) ./ (1 .- B1)
+    I2 = (H2 - B2) ./ (1 .- B2)
+    J1 = (H1 - B1) ./ (B1)
+    J2 = (H2 - B2) ./ (B2)
+    
+    K,R = size(I1)
+    G1 = copy(I1)
+    G2 = copy(I2)
+    for k = 1:K
+        for r = 1:K
+            if I1[k,r] < 0
+                G1[k,r] = J1[k,r]
+            end
+            if I2[k,r] < 0
+                G2[k,r] = J2[k,r]
+            end
+        end
+    end
+
+    return G1, G2
 end
