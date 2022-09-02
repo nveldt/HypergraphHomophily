@@ -2,13 +2,37 @@ using MAT
 D = matread("TripAdvisor_NAM_Europe_H.mat")
 H = D["H"]
 classes = D["classes"]
-
-
 alpha, B1, B2, H1, H2, R1, R2, N = Hypergraph_to_Scores(H,classes,25)
 class1 = "N. America"
-class2 = "Europe"
+class2 = "Europe" # also class 0, think of the labels modulo 2
+order = vec(sum(H,dims = 2))
+n = size(H,2)
+m = size(H,1)
+r = 25
 
 G1, G2 = normalized_bias(H1, H2, B1, B2)
+
+## homophily indices for clique expanded hypergraph, computed in a few different ways
+
+# Relative class sizes
+alp1 = sum(classes)/n
+alp2 = 1-alp1
+
+maxr = 13    # largest group size we consider in our hypergraph affinity plots
+k = findall(x->x<=maxr,order)
+
+# Weighted clique projection results
+gh1, gh2 = clique_expansion_homophily(N,2:r)
+gh1_lim, gh2_lim = clique_expansion_homophily(N,2:maxr)
+
+# Unweighted clique projection results
+A = H'*H
+Hr = H[k,:]
+gh1_un, gh2_un = clique_expansion_homophily_unweighted(A,classes)
+Ar = Hr'*Hr
+gh1_unlim, gh2_unlim = clique_expansion_homophily_unweighted(Ar,classes)
+
+
 ## Plot
 using Plots
 lw = 2.5

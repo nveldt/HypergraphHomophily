@@ -20,6 +20,76 @@ function clique_expansion_homophily(N,k_range)
     return hw, hm
 end
 
+# Used specifically for group picture measures. Computes the 
+# proportion of men/women 
+function clique_expansion_homophily_proportions(N,k_range,d1=3,d2=2)
+    # Compute homophily index in the clique expansion of the hypergraph
+    In1 = 0
+    In2 = 0
+    Cross = 0
+    numw = 0
+    numm = 0
+    for k = k_range
+        for j = 1:k+1
+            i = j-1         # number of women in this type hyperedge
+            Hik = N[k,j]    # number of hyperedges of this type
+            In1 += binomial(i,2)*Hik    # number of extra edges of this type
+            In2 += binomial(k-i,2)*Hik
+            Cross += Hik*i*(k-i)
+
+            # get the number of women and men in pictures to see if this is roughly even
+            numw += Hik*i
+            numm += Hik*(k-i)
+        end
+    end
+
+    hw = round(2*In1/(2*In1 + Cross), digits = d1)
+    hm = round(2*In2/(2*In2 + Cross), digits = d1)
+
+    NN = numm+numw
+    rw = round(numw/NN,digits = d2)
+    rm = round(numm/NN,digits = d2)
+    return hw, hm, rw, rm
+end
+
+# For this version, we use an unweighted clique expansion where two nodes are connected if they share in any hyperedge;
+# the edge is not weighted based on the NUMBER of times two nodes are in a hyperedge together.
+function clique_expansion_homophily_unweighted(A,classes)
+    @assert(maximum(classes) == 1)
+    @assert(minimum(classes) == 0)
+    @assert(length(unique(classes)) == 2)
+    n = size(A,1)
+    num1 = 0
+    denom1 = 0
+    num0 = 0
+    denom0 = 0
+    I,J,V = findnz(triu(A))
+
+    for t = 1:length(I)
+        i = I[t]
+        j = J[t]
+        if i == j
+            continue
+        end
+        li = classes[i]
+        lj = classes[j]
+        if li == lj
+            if li == 1
+                num1 += 2
+                denom1 += 2
+            else
+                num0 += 2
+                denom0 += 2
+            end
+        else
+            denom1 += 1
+            denom0 += 1
+        end
+    end
+
+    return num1/denom1, num0/denom0
+end
+
 function n_baselines(k,n,alpha)
     n1 = round(Int64,floor(n*alpha))
     n2 = n - n1

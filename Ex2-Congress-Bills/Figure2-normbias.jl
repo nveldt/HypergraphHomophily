@@ -9,6 +9,8 @@ H, classes = read_hypergraph_data(dataset,r)
 # 1 = democrat
 # 2 = republican
 
+order = vec(sum(H,dims = 2))
+
 m,n = size(H)
 
 # new labels
@@ -23,7 +25,28 @@ hr, hd = clique_expansion_homophily(N,r)
 
 G1, G2 = normalized_bias(H1, H2, B1, B2)
 
+## homophily indices for clique expanded hypergraph, computed in a few different ways
 
+sz1 = length(findall(x->x==1,order))
+mainhyp = m - sz1
+
+# Relative class sizes
+alp1 = sum(classes)/n
+alp2 = 1-alp1
+
+maxr = 20    # largest group size we consider in our hypergraph affinity plots
+k = findall(x->x<=maxr,order)
+
+# Weighted clique projection results
+gh1, gh2 = clique_expansion_homophily(N,2:r)
+gh1_lim, gh2_lim = clique_expansion_homophily(N,2:maxr)
+
+# Unweighted clique projection results
+A = H'*H
+Hr = H[k,:]
+gh1_un, gh2_un = clique_expansion_homophily_unweighted(A,classes)
+Ar = Hr'*Hr
+gh1_unlim, gh2_unlim = clique_expansion_homophily_unweighted(Ar,classes)
 
 ## Ratios
 

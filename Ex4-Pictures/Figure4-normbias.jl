@@ -151,14 +151,14 @@ end
 end
 
 ## Compute pairs in the clique projection, where we project all at once
-N = Nf
+N = Nw
 In1 = 0
 In2 = 0
 Cross = 0
 r = 10
 numw = 0
 numm = 0
-for k = 2:10
+for k = 2:r
     global In1, In2, Cross, numw, numm
     for j = 1:k+1
         i = j-1         # number of women in this type hyperedge
@@ -178,9 +178,10 @@ hw = round(2*In1/(2*In1 + Cross),digits = 3)
 hm = round(2*In2/(2*In2 + Cross),digits = 3)
 println("Clique expansion homophily scores: women = $hw, men = $hm")
 NN = numm+numw
-rw = numw/NN
-rm = numm/NN
-println("$rw $rm")
+rw = round(numw/NN,digits = 2)
+rm = round(numm/NN,digits = 2)
+println("Baseline scores: $rw $rm")
+println("\\midrule \n 2-$r & $hw & $hm & $rw\\% & $rm\\% \\\\")
 
 
 ## Compute pairs in the clique projection, where we project individual hyperedge sizes
@@ -208,8 +209,46 @@ for k = 2:4
     hm = round(2*In2/(2*In2 + Cross),digits = 3)
     # println("Clique expansion homophily scores: women = $hw, men = $hm")
     # println("$k \t women = $hw \t men = $hm, nums = ($numw, $numm)")
-    rw = numw/(numw+numm)*100
-    println("\\midrule \n $k & $hw & $hm & $rw \\% \\\\")
+    # rw = numw/(numw+numm)*100
+    NN = numw+numm
+    rw = round(numw/NN,digits = 2)
+    rm = round(numm/NN,digits = 2)
+    # println("\\midrule \n $k & $hw & $hm & $rw \\% \\\\")
+    println("\\midrule \n $k & $hw & $hm & $rw & $rm \\\\")
+
 end
 
+
+## Final table, more concise
+
+for k = 2:4
+    print("\\midrule \n $k ")
+    for j = 1:3
+        if  j == 1
+            N = Nf
+        elseif j == 2
+            N = Nw
+        else
+            N = Ng
+        end
+        hw,hm,rw,rm = clique_expansion_homophily_proportions(N,k)
+        print("& $hw & $hm & $rw / $rm ")
+    end
+    println("\\\\")
+end
+for t = [4 10]
+print("\\midrule \n 2-$t ")
+for j = 1:3
+    if  j == 1
+        N = Nf
+    elseif j == 2
+        N = Nw
+    else
+        N = Ng
+    end
+    hw,hm,rw,rm = clique_expansion_homophily_proportions(N,2:t)
+    print("& $hw & $hm & $rw / $rm ")
+end
+println("\\\\")
+end
 
