@@ -1,6 +1,6 @@
 ## Put the file in a nicer form
 
-L = readlines("../original-data/author-dblp/all_author_data.txt")
+L = readlines("all_author_data.txt")
 
 Author2ID = Dict()
 Author2papers = Vector{Vector{Int64}}()
